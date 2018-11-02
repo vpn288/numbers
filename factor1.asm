@@ -50,27 +50,50 @@ again:
 
          mov rdx,[highpart]
          mov rax,[lowpart]
+next_try:
          div qword [rsi]
-         cmp rax,1
-         je  check_reminder
+  ;       cmp rax,1
+  ;       je  check_reminder
 ;÷àñòíîå íå ðàâíî åäèíèöå, ïðîâåðèì îñòàòîê
-  test rdx,rdx
-  jne  next_dividor
+         test rdx,rdx
+         jne  next_dividor
 ;íàøëè äåëèòåëü
+         inc    qword [dividers]
+         inc    qword [dividers_total]
+         jmp    next_try
 
 next_dividor:
+;
+        add     rsi,8
+        mov     rax,[rsi]
+        test    rax,rax
+        jne     again
+;äîáàâèì ÷èñëî â ñïèñîê äåëèòåëåé
+         mov   rax,[dividers_total]
+         test  rax,rax
+         jne    next_number
+
+;nd2:
+;        add     rsi,8
+;        jmp     again
 
 check_reminder:
-  test rdx,rdx
-  jne  new_simple
+
+simple_is:
+;íîâîå ïðîñòîå
+         mov   rax,[lowpart]
+
+         mov   [rsi],rax
 ;çàêîí÷èëè ôàêòîðèçàöèþ
 ;áåðåì ñëåäóþùåå ÷èñëî
+next_number:
        add       qword [lowpart],1
        adc       qword [highpart],0
        mov       rsi,simples
+       mov       qword [dividers_total],0
        jmp       again
 
-new_simple:
+new_simp:
 
 ;add 10,13
 
@@ -114,9 +137,11 @@ summlen   dq  0
           db  '00'
 firstnum  db '11'
           db 256 dup(20h)
-lowpart   dq 2
-highpart  dq 0
-simples:  dq 2
+dividers         dq 0
+dividers_total   dq      0
+lowpart          dq 2
+highpart         dq 0
+simples:         dq 2
           dq 1024 dup(?)
 
           db       0x200000 dup  (?)

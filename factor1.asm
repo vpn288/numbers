@@ -60,6 +60,9 @@ next_try:
 ;íàøëè äåëèòåëü
          inc    qword [dividers]
          inc    qword [dividers_total]
+         mov    rax,[rsi]
+      ;   mov    [convert_i],rax
+         call   to_decimal
          jmp    next_try
 
 next_dividor:
@@ -119,8 +122,34 @@ new_simp:
   xor     rcx,rcx
   call  [ExitProcess]
 
-digits  db      12
-handle  dq      0
+;ïîäïðîãðàììû ïðåîáðàçîâàíèÿ â äåñÿòè÷íûé âèä
+to_decimal:
+        xor     rdi,rdi
+        fild    qword [convert_i]
+        fbstp    tbyte [convertbcd]
+        mov      rsi,convertbcd+9
+
+todec2:
+        mov      al,[rsi]
+        dec      rsi
+        test     al,al
+        je       todec2
+        mov      ah,al
+        and      al,0fh
+        shr      ah,4
+        or      ax,3030h
+        mov     word [firstnum+rdi],ax
+        add     rdi,2
+        cmp     rsi,convertbcd
+        jnb     todec2
+
+        ret
+
+convert_i       dq      123456789123456789
+convertbcd:     dq      0
+                dw 0
+digits          db      12
+handle          dq      0
 byteswritten    dq      0
 summ            dq      0
 

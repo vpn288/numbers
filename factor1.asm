@@ -39,17 +39,18 @@ entry start
 ; section '.text' code readable executable
   section '.text' code readable executable  writeable
   start:
-  mov   rcx,filename
-  mov   r8,2
-  mov   rdx,ofStruc
-  call  [OpenFile]
-  mov   [handle],rax
+         mov   rcx,filename
+         mov   r8,2
+         mov   rdx,ofStruc
+         call  [OpenFile]
+         mov   [handle],rax
 
          mov   rsi,simples
 again:
 
          mov rdx,[highpart]
          mov rax,[lowpart]
+
 next_try:
          div qword [rsi]
   ;       cmp rax,1
@@ -61,8 +62,9 @@ next_try:
          inc    qword [dividers]
          inc    qword [dividers_total]
          mov    rax,[rsi]
-      ;   mov    [convert_i],rax
+         mov    [convert_i],rax
          call   to_decimal
+         call   cut_leading_zeroes
          jmp    next_try
 
 next_dividor:
@@ -132,18 +134,26 @@ to_decimal:
 todec2:
         mov      al,[rsi]
         dec      rsi
-        test     al,al
-        je       todec2
         mov      ah,al
-        and      al,0fh
-        shr      ah,4
-        or      ax,3030h
+        shr      al,4
+        and      ah,0fh
+        or       ax,3030h
         mov     word [firstnum+rdi],ax
-        add     rdi,2
+        inc     rdi
+        inc     rdi
         cmp     rsi,convertbcd
         jnb     todec2
-
         ret
+
+cut_leading_zeroes:
+        mov     rdi,firstnum
+        mov     rcx,21
+        mov     al,30h
+        cld
+        repe     scasb
+        dec      rdi
+        ret
+
 
 convert_i       dq      123456789123456789
 convertbcd:     dq      0

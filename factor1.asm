@@ -61,14 +61,27 @@ next_try:
 ;íàøëè äåëèòåëü
          inc    qword [dividers]
          inc    qword [dividers_total]
+
+         jmp    next_try
+
+next_dividor:
+         mov   rax,[dividers_total]
+         test  rax,rax
+         je    nd2
+;òàê êàê âñåãî äåëèòåëåé íå íîëü, ïðîâåðèì, ïåðâûé ëè ýòî
+         dec   rax
+         jne   nd3
+;ïåðâûé äåëèòåëü. êîíâåðòèðóåì è âûâîäèì åãî
          mov    rax,[rsi]
          mov    [convert_i],rax
          call   to_decimal
          call   cut_leading_zeroes
-         jmp    next_try
-
-next_dividor:
-;
+         mov    [str_start],rdi
+         mov    [str_len],rcx
+         call   to_file
+nd3:
+nd2:
+        ;
         add     rsi,8
         mov     rax,[rsi]
         test    rax,rax
@@ -103,23 +116,15 @@ new_simp:
 ;add 10,13
 
 ;write to file
-  mov   rcx,[handle]
-  mov   rdx,[summ]
-  sub   rdx,140
-  mov   r8,[summlen]
-  add   r8,2
-  add   rdx,r8
-  mov   r8,140
-  mov   r9,byteswritten
-  call  [WriteFile]
-;move summ to firstsum
-  mov   rsi,[summ]
-  mov   rdi,firstnum
-  mov   rcx,[summlen]
-  add   qword [firstnumlen],2
-  cld
-  rep   movsb
-  dec   byte [digits]
+;
+to_file:
+         mov   rcx,[handle]
+         mov   rdx,[str_start]
+         mov   r8,[str_len]
+         mov   r9,byteswritten
+         call  [WriteFile]
+         ret
+
 
   xor     rcx,rcx
   call  [ExitProcess]
@@ -146,6 +151,8 @@ todec2:
         ret
 
 cut_leading_zeroes:
+;rdi óêàæåò íà íà÷÷àëî ñòðîêè
+;rcx - äëèíà ñòðîêè
         mov     rdi,firstnum
         mov     rcx,21
         mov     al,30h
@@ -161,7 +168,8 @@ convertbcd:     dq      0
 digits          db      12
 handle          dq      0
 byteswritten    dq      0
-summ            dq      0
+str_start       dq      0
+str_len         dq      0
 
 
 filename db 'factory.txt',0

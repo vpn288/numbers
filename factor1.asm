@@ -53,12 +53,10 @@ again:
 
 next_try:
          div qword [rsi]
-  ;       cmp rax,1
-  ;       je  check_reminder
-;÷àñòíîå íå ðàâíî åäèíèöå, ïðîâåðèì îñòàòîê
+;пока остаток не станет равен нулю
          test rdx,rdx
          jne  next_dividor
-;íàøëè äåëèòåëü
+;нашли делитель
          inc    qword [dividers]
          inc    qword [dividers_total]
 
@@ -68,10 +66,10 @@ next_dividor:
          mov   rax,[dividers_total]
          test  rax,rax
          je    nd2
-;òàê êàê âñåãî äåëèòåëåé íå íîëü, ïðîâåðèì, ïåðâûé ëè ýòî
-         dec   rax
+;так как всего делителей не ноль, проверим, первый ли это
+         cmp   rax,1
          jne   nd3
-;ïåðâûé äåëèòåëü. êîíâåðòèðóåì è âûâîäèì åãî
+;первый делитель. конвертируем и выводим его
          mov    rax,[rsi]
          mov    [convert_i],rax
          call   to_decimal
@@ -80,13 +78,17 @@ next_dividor:
          mov    [str_len],rcx
          call   to_file
 nd3:
+;не первый делитель. Ставим звездочку, а потом конвертируем
+         mov     qword [str_start],star
+         mov     qword [str_len],1
+         call    to_file
 nd2:
-        ;
-        add     rsi,8
-        mov     rax,[rsi]
-        test    rax,rax
-        jne     again
-;äîáàâèì ÷èñëî â ñïèñîê äåëèòåëåé
+;не было делителей еще
+         add     rsi,8
+         mov     rax,[rsi]
+         test    rax,rax
+         jne     again
+;добавим число в список делителей
          mov   rax,[dividers_total]
          test  rax,rax
          jne    next_number
@@ -98,18 +100,29 @@ nd2:
 check_reminder:
 
 simple_is:
-;íîâîå ïðîñòîå
+;новое простое
          mov   rax,[lowpart]
 
          mov   [rsi],rax
-;çàêîí÷èëè ôàêòîðèçàöèþ
-;áåðåì ñëåäóþùåå ÷èñëî
+;выведем его
+         mov    [convert_i],rax
+         call   to_decimal
+         call   cut_leading_zeroes
+         mov    [str_start],rdi
+         mov    [str_len],rcx
+         call   to_file
+;закончили факторизацию
+;берем следующее число
+;добавляем перенос строки
 next_number:
-       add       qword [lowpart],1
-       adc       qword [highpart],0
-       mov       rsi,simples
-       mov       qword [dividers_total],0
-       jmp       again
+        mov     qword [str_start],crlf
+        mov     qword [str_len],2
+        call    to_file
+        add       qword [lowpart],1
+        adc       qword [highpart],0
+        mov       rsi,simples
+        mov       qword [dividers_total],0
+        jmp       again
 
 new_simp:
 
@@ -118,19 +131,22 @@ new_simp:
 ;write to file
 ;
 to_file:
+         push    rsi
          mov   rcx,[handle]
          mov   rdx,[str_start]
          mov   r8,[str_len]
          mov   r9,byteswritten
          call  [WriteFile]
+         pop   rsi
          ret
 
 
   xor     rcx,rcx
   call  [ExitProcess]
 
-;ïîäïðîãðàììû ïðåîáðàçîâàíèÿ â äåñÿòè÷íûé âèä
+;подпрограммы преобразования в десятичный вид
 to_decimal:
+        push    rsi
         xor     rdi,rdi
         fild    qword [convert_i]
         fbstp    tbyte [convertbcd]
@@ -148,11 +164,12 @@ todec2:
         inc     rdi
         cmp     rsi,convertbcd
         jnb     todec2
+        pop     rsi
         ret
 
 cut_leading_zeroes:
-;rdi óêàæåò íà íà÷÷àëî ñòðîêè
-;rcx - äëèíà ñòðîêè
+;rdi укажет на наччало строки
+;rcx - длина строки
         mov     rdi,firstnum
         mov     rcx,21
         mov     al,30h
@@ -170,6 +187,8 @@ handle          dq      0
 byteswritten    dq      0
 str_start       dq      0
 str_len         dq      0
+star            db      '*'
+crlf            db      13,10
 
 
 filename db 'factory.txt',0

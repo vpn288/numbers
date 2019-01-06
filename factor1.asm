@@ -44,97 +44,44 @@ entry start
          mov   rdx,ofStruc
          call  [OpenFile]
          mov   [handle],rax
-         mov   qword [str_start],crlf
-         mov   qword [str_len],2
-         call  to_file
-         mov   rsi,simples
-again:
+         call  put_number
+         call  crlf
+         mov   qword [dividers],0
+         mov   rax,11
+         call  put_divider
+         call  crlf
+         mov   rax,13
+         mov   qword [dividers],3
+         call  put_divider
+         call  crlf
+         mov   rax,17
+         mov   qword [dividers],1
+         call  put_divider
 
-         mov rdx,[highpart]
-         mov rax,[lowpart]
 
-next_try:
-         div qword [rsi]
-;ïîêà îñòàòîê íå ñòàíåò ðàâåí íóëþ
-         test rdx,rdx
-         jne  next_dividor
-;íàøëè äåëèòåëü
-         inc    qword [dividers]
-         inc    qword [dividers_total]
 
-         jmp    next_try
+;----------EXIT----------
+         xor      rcx,rcx
+         call  [ExitProcess]
 
-next_dividor:
-         mov   rax,[dividers_total]
-         test  rax,rax
-         je    nd2
-;òàê êàê âñåãî äåëèòåëåé íå íîëü, ïðîâåðèì, ïåðâûé ëè ýòî
-         cmp   rax,1
-         jne   nd3
-;ïåðâûé äåëèòåëü. êîíâåðòèðóåì è âûâîäèì åãî
-         mov    rax,[rsi]
-         mov    [convert_i],rax
-         call   to_decimal
-         call   cut_leading_zeroes
-         mov    [str_start],rdi
-         mov    [str_len],rcx
-         call   to_file
-         jmp    nd2
-nd3:
-;íå ïåðâûé äåëèòåëü. Ñòàâèì çâåçäî÷êó, à ïîòîì êîíâåðòèðóåì
-         mov    rax,[rsi]
-         mov    [convert_i],rax
-         call   to_decimal
-         call   cut_leading_zeroes
-         mov     qword [str_start],star
-         mov     qword [str_len],1
-         call    to_file
-nd2:
-;íå áûëî äåëèòåëåé åùå
-         add     rsi,8
-         mov     rax,[rsi]
-         test    rax,rax
-         jne     again
-;äîáàâèì ÷èñëî â ñïèñîê äåëèòåëåé
-         mov   rax,[dividers_total]
-         test  rax,rax
-         jne    next_number
+;-------------------------
+;if dividers=0 skip
+;if 1  - put only rax
+;if >1 - put rax,roof,divider
+put_divider:
+         mov    rbx,[dividers]
+         cmp    rbx,0
+         je     skip
+         cmp    rbx,1
+         je     only_rax
+         call   put_number
+         call   roof_symbol
+         mov    rax,[dividers]
+only_rax:
+         call  put_number
 
-;nd2:
-;        add     rsi,8
-;        jmp     again
-
-check_reminder:
-
-simple_is:
-;íîâîå ïðîñòîå
-         mov   rax,[lowpart]
-
-         mov   [rsi],rax
-;âûâåäåì åãî
-         mov    [convert_i],rax
-         call   to_decimal
-         call   cut_leading_zeroes
-         mov    [str_start],rdi
-         mov    [str_len],rcx
-         call   to_file
-;çàêîí÷èëè ôàêòîðèçàöèþ
-;áåðåì ñëåäóþùåå ÷èñëî
-;äîáàâëÿåì ïåðåíîñ ñòðîêè
-next_number:
-        mov       qword [str_start],crlf
-        mov       qword [str_len],2
-        call      to_file
-        add       qword [lowpart],1
-        adc       qword [highpart],0
-        mov       rsi,simples
-        mov       qword [dividers_total],0
-        mov       qword [dividers],0
-        jmp       again
-
-new_simp:
-
-;add 10,13
+skip:
+        ret
 
 ;write to file
 ;
@@ -144,15 +91,18 @@ to_file:
          mov   rdx,[str_start]
          mov   r8,[str_len]
          mov   r9,byteswritten
+         sub   rsp,64
          call  [WriteFile]
+         add   rsp,64
          pop   rsi
          ret
+;-------------------------
+;convert to  decimal subs
 
-
-  xor     rcx,rcx
-  call  [ExitProcess]
-
-;ïîäïðîãðàììû ïðåîáðàçîâàíèÿ â äåñÿòè÷íûé âèä
+;
+;convert_i - what to convert
+;convertbcd - intermediary data
+;convertbcd - output decimal string
 to_decimal:
         push    rsi
         xor     rdi,rdi
@@ -167,23 +117,51 @@ todec2:
         shr      al,4
         and      ah,0fh
         or       ax,3030h
-        mov     word [firstnum+rdi],ax
-        inc     rdi
-        inc     rdi
-        cmp     rsi,convertbcd
-        jnb     todec2
-        pop     rsi
+        mov      word [firstnum+rdi],ax
+        inc      rdi
+        inc      rdi
+        cmp      rsi,convertbcd
+        jnb      todec2
+        pop      rsi
         ret
 
 cut_leading_zeroes:
-;rdi óêàæåò íà íà÷÷àëî ñòðîêè
-;rcx - äëèíà ñòðîêè
+;rdi - start of string
+;rcx - length of string
         mov     rdi,firstnum
         mov     rcx,21
         mov     al,30h
         cld
         repe     scasb
         dec      rdi
+        ret
+
+put_number:
+;rax - number
+        mov     [convert_i],rax
+        call    to_decimal
+        call    cut_leading_zeroes
+        mov     [str_start],rdi
+        mov     [str_len],rcx
+        call    to_file
+        ret
+
+crlf:
+        mov       qword [str_start],crlf_s
+        mov       qword [str_len],2
+        call      to_file
+        ret
+
+roof_symbol:
+        mov     qword [str_start],roofs
+        mov     qword [str_len],1
+        call    to_file
+        ret
+
+star_symbol:
+        mov     qword [str_start],star
+        mov     qword [str_len],1
+        call    to_file
         ret
 
 
@@ -196,7 +174,8 @@ byteswritten    dq      0
 str_start       dq      0
 str_len         dq      0
 star            db      '*'
-crlf            db      13,10
+roofs           db      '^'
+crlf_s          db      13,10
 
 
 filename db 'factory.txt',0
@@ -215,6 +194,7 @@ dividers         dq 0
 dividers_total   dq      0
 lowpart          dq 2
 highpart         dq 0
+lowpart_save     dq 0
 simples:         dq 2
           dq 1024 dup(?)
 

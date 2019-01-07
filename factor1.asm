@@ -44,25 +44,38 @@ entry start
          mov   rdx,ofStruc
          call  [OpenFile]
          mov   [handle],rax
-         call  put_number
-         call  crlf
-         mov   qword [dividers],0
-         mov   rax,11
-         call  put_divider
-         call  crlf
-         mov   rax,13
-         mov   qword [dividers],3
-         call  put_divider
-         call  crlf
-         mov   rax,17
+         mov   rax,37
+         mov   qword [dividers_total],1
          mov   qword [dividers],1
-         call  put_divider
-
-
+         call  divider
+         mov   rax,213
+         mov   qword [dividers_total],2
+         mov   qword [dividers],472
+         call  divider
+         mov   rax,376
+         mov   qword [dividers_total],3
+         mov   qword [dividers],73
+         call  divider
 
 ;----------EXIT----------
          xor      rcx,rcx
          call  [ExitProcess]
+
+;--------------------------
+;if dividers_total =  0 skip
+;if dividers_total =  1 call put_divider
+;if divirers_total >= 2 put star and call put_dividers
+divider:
+        mov     rbx,[dividers_total]
+        cmp     rbx,0
+        je      skip2
+        cmp     rbx,1
+        je      putdiv
+        call    star_symbol
+putdiv:
+        call    put_divider
+skip2:
+        ret
 
 ;-------------------------
 ;if dividers=0 skip
@@ -80,20 +93,24 @@ put_divider:
 only_rax:
          call  put_number
 
+
 skip:
+
         ret
 
 ;write to file
 ;
 to_file:
          push    rsi
+         push    rax
          mov   rcx,[handle]
          mov   rdx,[str_start]
          mov   r8,[str_len]
          mov   r9,byteswritten
-         sub   rsp,64
+         sub   rsp,128
          call  [WriteFile]
-         add   rsp,64
+         add   rsp,128
+         pop   rax
          pop   rsi
          ret
 ;-------------------------
